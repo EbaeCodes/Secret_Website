@@ -1,9 +1,12 @@
 //jshint esversion:6
 require("dotenv").config();
+const md5 = require("md5");
 const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption")
 const express = require("express");
 const bodyParser = require("body-parser");
+const bcrypt = require('bcrypt');
+const salt = 10;
 const ejs = require("ejs");
 const app = express();
 
@@ -34,38 +37,42 @@ const userSchema = new mongoose.Schema({
     response.render("register");
  });
 
+ app.get("/logout",function(request,response){
+    response.redirect("/");
+ });
+
+
  app.get("/login",function(request,response){
     response.render("login");
  });
 
- app.post("/register",async(request,response)=>{
-     const newUser = new User({
-       email:request.body.username,
-       password: request.body.password 
-     });
-     await newUser.save().then(()=> response.render("secrets"));
+ app.post("/register",function(request,response){
+    bcrypt.hash(request.body.password, salt, async(err, hash)=> {
+        // Store hash in your password DB.
+         const newUser = new User({
+            email:request.body.username,
+            password: hash
+          });
+          await newUser.save().then(()=> response.render("secrets"));
+    }) 
  });
 
+ -
  app.post("/login",async(request,response)=>{
       const email = request.body.username;
       const password = request.body.password;
-
       const found = await User.findOne({email:email});
 
-      if(found){
-        if(found.password === password){
+      bcrypt.compare(password, found.password, function(err, result) {
+        if(result === true){
             response.render("secrets");
         }else{
             var errorMessage = "Incorrect username or password";
             // response.render("login", {error:errorMessage});
             console.log(errorMessage)
         }  
-      }
+    });
 });
-
-
-
-
 
 
 
